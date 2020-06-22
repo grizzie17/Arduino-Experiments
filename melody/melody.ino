@@ -4,7 +4,7 @@
 
 #define REST 0
 
-const uint8_t kPinTone = 5;
+const uint8_t kPinTone = 11;
 
 unsigned int tempo = 100;
 unsigned int wholeNote = ( 60000 * 4 ) / tempo;
