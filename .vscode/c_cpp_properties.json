@@ -26,7 +26,7 @@
                 "${env:SKETCHBOOKS}\\libraries\\YogiDelay\\src",
                 "${env:SKETCHBOOKS}\\libraries\\YogiPitches\\src",
                 "${env:SKETCHBOOKS}\\libraries\\YogiSonic\\src",
-                "${env:SKETCHBOOKS}\\libraries\\Bolder_Flight_Systems_MPU9250\\src",
+                "${env:SKETCHBOOKS}\\libraries\\MPU9250\\src",
                 "${env:ARDUINOPACKAGES}\\esp8266\\tools\\**",
                 "${env:ARDUINOPACKAGES}\\esp8266\\hardware\\esp8266\\2.7.1\\**"
             ],
