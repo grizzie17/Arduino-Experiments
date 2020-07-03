@@ -1,5 +1,5 @@
 
-const uint8_t kPinLed = 8;  //LED_BUILTIN;
+const uint8_t kPinLed = LED_BUILTIN;
 
 typedef struct BlinkDelay
 {
