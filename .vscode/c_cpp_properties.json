@@ -24,10 +24,13 @@
                 "C:\\arduino\\libraries\\**\\**\\**",
                 "${env:SKETCHLIBS}\\YogiDelay\\src",
                 "${env:SKETCHLIBS}\\YogiPitches\\src",
+                "${env:SKETCHLIBS}\\YogiSleep\\src",
                 "${env:SKETCHLIBS}\\YogiSonic\\src",
                 "${env:SKETCHLIBS}\\SparkFun_ADXL345_Arduino_Library\\src",
+                "${env:SKETCHLIBS}\\Yogi_ADXL345\\src",
                 "${env:SKETCHLIBS}\\MPU9250\\src",
                 "${env:SKETCHLIBS}\\Sleep_n0m1",
+                "${env:SKETCHLIBS}\\WatchDog",
                 "${env:ARDUINOPACKAGES}\\esp8266\\tools\\**",
                 "${env:ARDUINOPACKAGES}\\esp8266\\hardware\\esp8266\\2.7.1\\**"
             ],
