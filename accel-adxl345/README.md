@@ -15,7 +15,7 @@ when dealing with an UNO.
 | CS      | 3.3V           |                      |
 | INT1    | D2 (INT0)      | use Interrupts       |
 | INT2    | -              |                      |
-| SD0     | -              |                      |
+| SD0     | GND            |                      |
 | SDA     | A4 (SDA) blue  | 10k resistor to 3.3V |
 | SCL     | A5 (SCL) green | 10k resistor to 3.3v |
 

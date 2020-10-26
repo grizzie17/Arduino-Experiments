@@ -15,7 +15,7 @@
 	},
 	"settings": {
 		// arduino
-		"arduino.path": "C:/Arduino",
+		"arduino.path": "C:\\Arduino",
 		"arduino.commandPath": "arduino_debug.exe",
 		"arduino.defaultBaudRate": 115200,
 		// C++

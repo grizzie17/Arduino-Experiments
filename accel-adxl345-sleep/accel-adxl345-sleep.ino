@@ -1,10 +1,13 @@
+#define _DEBUG 1
+#include <YogiDebug.h>
+
 #include <ADXL345_setup.h>  // includes SparkFun ADXL345 Library
 #include <WatchDog.h>
 #include <YogiSleep.h>
 
 const uint8_t k_pinINT = 2;
 const uint8_t k_pinLED = 5;  //LED_BUILTIN;
-const uint8_t k_pinLAY = 4;
+const uint8_t k_pinLAY = 6;  // LED indicating laying down
 const uint8_t kPinSDA = A4;
 const uint8_t kPinSCL = A5;
 
@@ -19,15 +22,16 @@ typedef enum orientation_t
     OR_VERTICAL,
     OR_HORIZONTAL
 } orientation_t;
-
 orientation_t g_eOrientation = OR_UNKNOWN;
 
-
-volatile bool g_bWatchDogInterrupt = false;
 
 unsigned long g_uTimeCurrent = 0;
 unsigned long g_uTimePrevious = 0;
 unsigned long g_uTimeInterrupt = 0;
+unsigned long g_uLaying = 0;
+
+const unsigned long k_uDelaySleep = 680 * ADXL_SLEEP_DELAY;
+
 
 bool g_bActiveLaydown = false;
 bool g_bSleepy = false;
@@ -35,6 +39,63 @@ bool g_bSleepy = false;
 
 YogiSleep g_tSleep;
 
+//============== ADXL =================
+
+void
+adxlAttachInterrupt()
+{
+    pinMode( k_pinINT, INPUT );
+    attachInterrupt( digitalPinToInterrupt( k_pinINT ), adxlIntHandler, RISING );
+}
+
+void
+adxlDetachInterrupt()
+{
+    detachInterrupt( digitalPinToInterrupt( k_pinINT ) );
+}
+
+
+void
+adxlDrowsy()
+{
+    g_uCountInterrupt = 0;
+    adxl.setInterruptMask( 0 );
+    adxl.getInterruptSource();  // clear mInterrupts
+
+    adxl.setInterruptMask( k_maskActivity );
+    adxl.setLowPower( true );
+    // adxlAttachInterrupt();
+}
+
+
+void
+adxlSleep()
+{
+    adxlDetachInterrupt();
+    g_uCountInterrupt = 0;
+    adxl.getInterruptSource();  // clear mInterrupts
+    adxl.setInterruptMask( 0 );
+    adxl.setLowPower( true );
+}
+
+
+void
+adxlWakeup()
+{
+    adxl.setLowPower( false );
+    delay( 100 );
+    adxl.setInterruptMask( k_maskAll );
+    g_uCountInterrupt = 0;
+    adxl.getInterruptSource();
+    adxlAttachInterrupt();
+    adxlIntHandler();
+    g_nActivity = 0;
+}
+
+
+//============ WatchDog ===============
+
+volatile bool g_bWatchDogInterrupt = false;
 
 void
 watchdogIntHandler()
@@ -44,60 +105,76 @@ watchdogIntHandler()
 
 
 void
-watchdogSleepNow()
+watchdogSleep()
 {
-    Serial.println( "watchdog Sleep Now " );
-    delay( 200 );
-    g_bSleepy = true;
-    WatchDog::setPeriod( OVF_8000MS );
+    DEBUG_PRINTLN( "Watchdog Sleep" );
+    DEBUG_DELAY( 400 );
+    adxlSleep();
+    WatchDog::setPeriod( OVF_4000MS );
     WatchDog::start();
-    g_tSleep.prepareSleep();
     g_tSleep.powerDown();
-
-    // wakeup here
-    WatchDog::stop();
 }
 
 
-/******************** SETUP ********************/
-/*          Configure ADXL345 Settings         */
 void
-setup()
+watchdogWakeup()
 {
-    Serial.begin( 115200 );
-    while ( ! Serial )
-        ;  // delay while serial starts up
-    delay( 600 );
-
-    Serial.println( "SparkFun ADXL345 Accelerometer Hook Up Guide Example" );
-
-
-    pinMode( k_pinLED, OUTPUT );
-    digitalWrite( k_pinLED, LOW );
-
-    pinMode( k_pinLAY, OUTPUT );
-    digitalWrite( k_pinLAY, LOW );
-
-    adxl = ADXL345();
-    adxlSetup();
-
-    pinMode( k_pinINT, INPUT );
-    g_eOrientation = OR_UNKNOWN;
-    attachInterrupt(
-            digitalPinToInterrupt( k_pinINT ), adxlIntHandler, CHANGE );
-
-    WatchDog::init( watchdogIntHandler, OVF_4000MS );
-
-    g_uTimePrevious = 0;
-
-    g_bActiveLaydown = false;
-
-    Serial.println( "setup complete" );
+    WatchDog::stop();
+    adxlWakeup();
+    g_uTimeInterrupt = millis();
+    DEBUG_PRINTLN( "Watchdog Wakeup" );
 }
 
+
+void
+watchdogHandler()
+{
+    if ( isHorizontal() )
+    {
+        // go back to sleep
+        g_eOrientation = OR_HORIZONTAL;
+        adxlSleep();
+        WatchDog::start();
+        g_tSleep.sleep();
+    }
+    else
+    {
+        // cancel watchdog
+        watchdogWakeup();
+        g_uLaying = 0;
+        g_bActiveLaydown = false;
+        g_eOrientation = OR_VERTICAL;
+    }
+}
+
+
+//============ LED ===============
+
+void
+ledOn()
+{
+    uint8_t m = adxl.getInterruptMask();
+    digitalWrite( k_pinLED, HIGH );
+    DEBUG_DELAY( 500 );
+    adxl.setInterruptMask( m );
+}
+
+
+void
+ledOff()
+{
+    uint8_t m = adxl.getInterruptMask();
+    digitalWrite( k_pinLED, LOW );
+    DEBUG_DELAY( 500 );
+    adxl.getInterruptSource();
+    adxl.setInterruptMask( m );
+}
+
+
+//============ states =============
 
 bool
-isLayingdown()
+isHorizontal()
 {
     int x, y, z;
     adxl.readAccel( &x, &y, &z );
@@ -105,10 +182,26 @@ isLayingdown()
 }
 
 
+bool
+isLayingdown()
+{
+    if ( isHorizontal() )
+    {
+        ++g_uLaying;
+        return 1 < g_uLaying ? true : false;
+    }
+    else
+    {
+        g_uLaying = 0;
+        return false;
+    }
+}
+
+
 void
 orientationUnknown()
 {
-    g_eOrientation = isLayingdown() ? OR_HORIZONTAL : OR_VERTICAL;
+    g_eOrientation = isHorizontal() ? OR_HORIZONTAL : OR_VERTICAL;
 }
 
 
@@ -122,12 +215,53 @@ orientationVertical()
     else
     {
         g_uTimeCurrent = millis();
-        uint8_t mInterrupts = adxlGetInterrupts();
+        uint8_t mInterrupts = 0;
+        if ( 0 < g_uCountInterrupt )
+        {
+            mInterrupts = adxlGetInterrupts();
+            g_uTimeInterrupt = millis();
+        }
+        else
+        {
+            if ( k_uDelaySleep < abs( g_uTimeCurrent - g_uTimeInterrupt ) )
+            {
+                adxl.getInterruptSource();
+                g_uTimeInterrupt = g_uTimeCurrent;
+                mInterrupts = ADXL_M_INACTIVITY;
+            }
+        }
+        g_uCountInterrupt = 0;
         if ( 0 != mInterrupts )
         {
-            digitalWrite( k_pinLED, HIGH );
+            ledOn();
             adxlDataHandler( mInterrupts );
+            delay( 100 );
+            if ( 0 != ( mInterrupts & ADXL_M_INACTIVITY ) )
+            {
+                DEBUG_PRINTLN( "Sleepy" );
+                DEBUG_DELAY( 300 );
+                ledOff();
+                g_bSleepy = true;
+                adxlDrowsy();
+                g_tSleep.prepareSleep();
+                adxlAttachInterrupt();
+                g_tSleep.sleep();
+                // wakeup here
+                g_tSleep.postSleep();
+                DEBUG_PRINTLN( "Wake UP" );
+                ledOn();
+                g_bSleepy = false;
+                adxlWakeup();
+                g_uTimePrevious = millis();
+                g_uTimeInterrupt = millis();
+            }
             g_uTimeInterrupt = millis();
+        }
+
+        g_uTimeCurrent = millis();
+        if ( 1000 * 5 < abs( g_uTimeCurrent - g_uTimeInterrupt ) )
+        {
+            ledOff();
         }
     }
 }
@@ -143,30 +277,58 @@ orientationHorizontal()
         {
             g_bActiveLaydown = true;
 
-            digitalWrite( k_pinLED, LOW );
-            digitalWrite( k_pinLAY, HIGH );
-            adxl.setInterruptMask( 0 );
-            watchdogSleepNow();
-        }
-        else
-        {
-            g_bWatchDogInterrupt = false;
-            WatchDog::start();
+            ledOff();
+            digitalWrite( k_pinLAY, LOW );
+            watchdogSleep();
         }
     }
     else
     {
         if ( g_bActiveLaydown )
         {
-            Serial.println( "watchdog Wakeup" );
-            WatchDog::stop();
+            watchdogWakeup();
+
+            g_uLaying = 0;
             g_bActiveLaydown = false;
             g_eOrientation = OR_VERTICAL;
 
             digitalWrite( k_pinLAY, LOW );
-            adxl.setInterruptMask( k_maskAll );
+            ledOn();
         }
     }
+}
+
+
+/******************** SETUP ********************/
+/*          Configure ADXL345 Settings         */
+void
+setup()
+{
+    DEBUG_OPEN( "SparkFun ADXL345 Accelerometer Hook Up Guide Example" );
+
+    pinMode( k_pinLED, OUTPUT );
+    digitalWrite( k_pinLED, HIGH );
+
+    pinMode( k_pinLAY, OUTPUT );
+    digitalWrite( k_pinLAY, LOW );
+
+    // adxl = ADXL345();
+    adxlSetup( 15, 18 );
+    adxlAttachInterrupt();
+
+    delay( 200 );
+    g_eOrientation = isHorizontal() ? OR_HORIZONTAL : OR_VERTICAL;
+
+    WatchDog::init( watchdogIntHandler, OVF_4000MS );
+    WatchDog::stop();
+
+    g_uTimePrevious = 0;
+    g_uTimeInterrupt = millis();
+    g_nActivity = 0;
+
+    g_bActiveLaydown = false;
+
+    DEBUG_PRINTLN( "setup complete" );
 }
 
 
@@ -175,27 +337,25 @@ orientationHorizontal()
 void
 loop()
 {
-    switch ( g_eOrientation )
+    if ( g_bWatchDogInterrupt )
     {
-    case OR_UNKNOWN:
-        orientationUnknown();
-        break;
-    case OR_VERTICAL:
-        orientationVertical();
-        break;
-    case OR_HORIZONTAL:
-        orientationHorizontal();
-        break;
-    default:
-        break;
+        g_bWatchDogInterrupt = false;
+        watchdogHandler();
     }
-
-
-    g_uTimeCurrent = millis();
-    if ( 1000 * 5 < abs( g_uTimeCurrent - g_uTimePrevious ) )
+    else
     {
-        g_uTimePrevious = g_uTimeCurrent;
-
-        digitalWrite( k_pinLED, LOW );
+        switch ( g_eOrientation )
+        {
+        case OR_VERTICAL:
+            orientationVertical();
+            break;
+        case OR_HORIZONTAL:
+            orientationHorizontal();
+            break;
+        case OR_UNKNOWN:
+        default:
+            orientationUnknown();
+            break;
+        }
     }
 }

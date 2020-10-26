@@ -9,36 +9,38 @@
             "name": "Win32",
             "defines": [
                 "ARDUINO=10800",
-                "USBCON"
+                "USBCON",
+                "NDEBUG"
             ],
             "includePath": [
                 ".",
-                "${workspaceFolder}",
+                "${workspaceRoot}",
                 "C:\\Arduino\\hardware\\arduino\\avr\\**",
                 "C:\\Arduino\\hardware\\arduino\\**",
                 "C:\\Arduino\\hardware\\tools\\avr\\avr\\include\\**",
-                "C:\\Arduino\\hardware\\tools\\avr\\avr\\include",
-                "C:\\Arduino\\hardware\\tools\\avr\\avr\\**",
                 "C:\\Arduino\\tools\\**",
                 "C:\\Arduino\\libraries\\**",
-                "C:\\arduino\\libraries\\**\\**\\**",
+                "C:\\Arduino\\libraries\\**\\**\\**",
+                "${env:SKETCHLIBS}\\**",
+                "${env:SKETCHLIBS}\\**\\**",
                 "${env:SKETCHLIBS}\\YogiDelay\\src",
+                "${env:SKETCHLIBS}\\YogiUtilities\\src",
                 "${env:SKETCHLIBS}\\YogiPitches\\src",
-                "${env:SKETCHLIBS}\\YogiSleep\\src",
+                "${env:SKETCHLIBS}\\YogiRelay\\src",
                 "${env:SKETCHLIBS}\\YogiSonic\\src",
-                "${env:SKETCHLIBS}\\SparkFun_ADXL345_Arduino_Library\\src",
                 "${env:SKETCHLIBS}\\Yogi_ADXL345\\src",
-                "${env:SKETCHLIBS}\\MPU9250\\src",
-                "${env:SKETCHLIBS}\\Sleep_n0m1",
-                "${env:SKETCHLIBS}\\WatchDog",
-                "${env:ARDUINOPACKAGES}\\esp8266\\tools\\**",
-                "${env:ARDUINOPACKAGES}\\esp8266\\hardware\\esp8266\\2.7.1\\**"
+                "${env:SKETCHLIBS}\\SparkFun_ADXL345_Arduino_Library\\src",
+                "${env:SKETCHLIBS}\\mpu6050\\src",
+                "${env:SKETCHLIBS}\\Adafruit_MPU6050",
+                "${env:SKETCHLIBS}\\Adafruit_BusIO",
+                "${env:SKETCHLIBS}\\Adafruit_Sensor",
+                "${env:SKETCHLIBS}\\WatchDog"
             ],
             "forcedInclude": [
                 "C:\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
             ],
             "intelliSenseMode": "msvc-x64",
-            "cStandard": "c11",
+            "cStandard": "c99",
             "cppStandard": "c++11",
             "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.24.28314/bin/Hostx64/x64/cl.exe"
         }

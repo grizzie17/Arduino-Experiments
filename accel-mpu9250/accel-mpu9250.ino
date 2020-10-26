@@ -1,8 +1,11 @@
+#define _DEBUG
+#include <YogiDebug.h>
+
 // Hardware seutp:
+#include <Wire.h>
 
 #include <MPU9250.h>
-// #include <SPI.h>
-#include <Sleep_n0m1.h>
+#include <YogiSleep.h>
 
 
 #ifdef _MSC_VER
@@ -25,29 +28,7 @@ unsigned long g_uTimePrevious = 0;
 
 MPU9250 g_tIMU( Wire, MPU9250_ADDRESS );
 // MPU9250 g_tIMU( SPI, 10 );
-Sleep g_tSleep;
-
-
-void
-enterSleep()
-{
-    Serial.println( "Entering Sleep Mode" );
-
-    imuStatus( g_tIMU.enableWakeOnMotion( 50, MPU9250::LP_ACCEL_ODR_0_98HZ ),
-            "IMU Wake on Motion" );
-    // imuStatus( g_tIMU.enableDataReadyInterrupt(), "IMU Data Ready Interrupt" );
-    delay( 500 );
-
-    g_tSleep.pwrDownMode();
-    g_tSleep.sleepPinInterrupt( kPinAccel, RISING );
-
-    Serial.println( "Wake Up" );
-    // interruptHandler();
-    // imuStatus( g_tIMU.disableDataReadyInterrupt(), "IMU Data Ready Interrupt" );
-    attachInterrupt(
-            digitalPinToInterrupt( kPinAccel ), interruptHandler, RISING );
-    // g_uTimeCurrent = millis();
-}
+YogiSleep g_tSleep;
 
 
 void
@@ -56,88 +37,71 @@ interruptHandler()
     g_bAccelInterrupt = true;
 }
 
+
 void
 imuStatus( int status, const char* sMessage )
 {
     if ( status < 0 )
     {
-        Serial.print( sMessage );
-        Serial.println( " unsuccessful" );
-        Serial.print( "status=" );
-        Serial.println( status );
+        DEBUG_PRINT( sMessage );
+        DEBUG_PRINTLN( " unsuccessful" );
+        DEBUG_PRINT( "status=" );
+        DEBUG_PRINTLN( status );
     }
     else
     {
-        Serial.print( sMessage );
-        Serial.println( " successful" );
+        DEBUG_PRINT( sMessage );
+        DEBUG_PRINTLN( " successful" );
     }
 }
+
+
+void
+enterSleep()
+{
+    DEBUG_PRINTLN( "Entering Sleep Mode" );
+
+    g_tSleep.prepareSleep();
+    // g_tSleep.sleepPinInterrupt( kPinAccel, RISING );
+    imuStatus( g_tIMU.enableDataReadyInterrupt(), "IMU Data Ready Interrupt" );
+    imuStatus( g_tIMU.enableWakeOnMotion( 50, MPU9250::LP_ACCEL_ODR_0_98HZ ),
+            "IMU Wake on Motion" );
+    attachInterrupt(
+            digitalPinToInterrupt( kPinAccel ), interruptHandler, RISING );
+    delay( 500 );
+    g_tSleep.sleep();
+    g_tSleep.postSleep();
+
+    DEBUG_PRINTLN( "Wake Up" );
+    // interruptHandler();
+    // imuStatus( g_tIMU.disableDataReadyInterrupt(), "IMU Data Ready Interrupt" );
+    // g_uTimeCurrent = millis();
+}
+
 
 void
 setup()
 {
-    Serial.begin( 115200 );
-    while ( ! Serial )
-        ;
-
-    delay( 500 );
-
-    Serial.println( "MPU9250 Test" );
+    DEBUG_OPEN( "MPU9250 Test" );
 
     imuStatus( g_tIMU.begin(), "IMU begin" );
 
-    // g_tIMU.calibrateAccel();
-    // g_tIMU.calibrateGyro();
-    // g_tIMU.calibrateMag();
-
-    // imuStatus(
-    //         g_tIMU.enableFifo( true, true, false, false ), "IMU enable Fifo" );
-
-    imuStatus( g_tIMU.setDlpfBandwidth( MPU9250::DLPF_BANDWIDTH_5HZ ),
-            "IMU Dlpf Bandwidth" );
-
-    g_tIMU.setSrd( 249 );
-
-    imuStatus( g_tIMU.setAccelRange( MPU9250::ACCEL_RANGE_2G ),
-            "IMU Accel Range" );
-
-    imuStatus( g_tIMU.setGyroRange( MPU9250::GYRO_RANGE_250DPS ),
-            "IMU Gyro Range" );
+    delay( 100 );
 
 
-    // g_tIMU.calibrateAccel();
-    // g_tIMU.calibrateAccel();
-    // g_tIMU.calibrateAccel();
-    // g_tIMU.calibrateAccel();
-    // g_tIMU.calibrateAccel();
-    // g_tIMU.calibrateAccel();
-    // float fScale = g_tIMU.getAccelScaleFactorZ();
-    // Serial.print( "Accel Scale = " );
-    // Serial.println( fScale );
-    // float fBias = g_tIMU.getAccelBiasZ_mss();
-    // Serial.print( "Accel Bias = " );
-    // Serial.println( fBias );
+    // imuStatus( g_tIMU.setAccelRange( MPU9250::ACCEL_RANGE_8G ),
+    //         "IMU Accel Range" );
 
-    // fScale = 1.0;
-    // float fBiasX = .00001;
-    // float fBiasY = .00001;
-    // float fBiasZ = 0.01;
-    // float fScaleX = -1.0 / 38.6;
-    // float fScaleY = -1.0 / 39.2;
-    // float fScaleZ = -1.0 / 7.3;
-    // g_tIMU.setAccelCalX( fBiasX, fScaleX );
-    // g_tIMU.setAccelCalY( fBiasY, fScaleY );
-    // g_tIMU.setAccelCalZ( fBiasZ, fScaleZ );
+    // imuStatus( g_tIMU.setGyroRange( MPU9250::GYRO_RANGE_500DPS ),
+    //         "IMU Gyro Range" );
 
-    // g_tIMU.setMagCalX( 0.0, 1.0 );
-    // g_tIMU.setMagCalY( 0.0, 1.0 );
-    // g_tIMU.setMagCalZ( 0.0, 1.0 );
+    // imuStatus( g_tIMU.setDlpfBandwidth( MPU9250::DLPF_BANDWIDTH_5HZ ),
+    //         "IMU Dlpf Bandwidth" );
+
+    // g_tIMU.setSrd( 19 );
 
 
-    imuStatus( g_tIMU.enableDataReadyInterrupt(), "IMU data ready interrupt" );
-
-    imuStatus( g_tIMU.enableWakeOnMotion( 50, MPU9250::LP_ACCEL_ODR_7_81HZ ),
-            "IMU wake on motion" );
+    // imuStatus( g_tIMU.disableDataReadyInterrupt(), "IMU data ready interrupt" );
 
 
     pinMode( kPinLED, OUTPUT );
@@ -146,13 +110,17 @@ setup()
     g_bAccelInterrupt = false;
     pinMode( kPinAccel, INPUT );
     // digitalWrite( kPinAccel, LOW );
+
+    imuStatus( g_tIMU.enableWakeOnMotion( 400, MPU9250::LP_ACCEL_ODR_0_24HZ ),
+            "IMU wake on motion" );
+
     attachInterrupt(
             digitalPinToInterrupt( kPinAccel ), interruptHandler, RISING );
     g_uTimeCurrent = millis();
     g_uTimeInterrupt = millis();
     g_uTimePrevious = 0;
 
-    Serial.println( "setup complete" );
+    DEBUG_PRINTLN( "setup complete" );
 }
 
 
@@ -187,29 +155,57 @@ loop()
     if ( g_bAccelInterrupt )
     {
         g_bAccelInterrupt = false;
-        Serial.print( "Interrupt: " );
-        Serial.println( ++g_uCountInterrupt );
+        // detachInterrupt( digitalPinToInterrupt( kPinAccel ) );
+        DEBUG_PRINT( "Interrupt: " );
+        DEBUG_PRINTLN( ++g_uCountInterrupt );
         g_tIMU.readSensor();
 
         digitalWrite( kPinLED, HIGH );
+
         float x = g_tIMU.getAccelX_mss();
         float y = g_tIMU.getAccelY_mss();
         float z = g_tIMU.getAccelZ_mss();
+        bool  bOutput = false;
 
         if ( 0.0 != x || 0.0 != y || 0.0 != z )
         {
-            Serial.print( "Accel: X=" );
-            Serial.print( x );
-            Serial.print( "; Y=" );
-            Serial.print( y );
-            Serial.print( "; Z=" );
-            Serial.println( z );
+            bOutput = true;
+            DEBUG_PRINT( "Accel: X=" );
+            DEBUG_PRINT( x );
+            DEBUG_PRINT( "; Y=" );
+            DEBUG_PRINT( y );
+            DEBUG_PRINT( "; Z=" );
+            DEBUG_PRINT( z );
         }
+
+        x = g_tIMU.getGyroX_rads();
+        y = g_tIMU.getGyroY_rads();
+        z = g_tIMU.getGyroZ_rads();
+
+        if ( 0.0 != x || 0.0 != y || 0.0 != z )
+        {
+            if ( bOutput )
+                DEBUG_PRINT( " ... " );
+            bOutput = true;
+            DEBUG_PRINT( "Gyro: X=" );
+            DEBUG_PRINT( x );
+            DEBUG_PRINT( "; Y=" );
+            DEBUG_PRINT( y );
+            DEBUG_PRINT( "; Z=" );
+            DEBUG_PRINT( z );
+        }
+
+        if ( bOutput )
+            DEBUG_PRINTLN( " ." );
 
         // printXYZ();
 
         g_uTimeInterrupt = millis();
         g_uTimePrevious = g_uTimeInterrupt;
+
+        // g_tIMU.enableWakeOnMotion( 400, MPU9250::LP_ACCEL_ODR_0_24HZ );
+        // attachInterrupt(
+        //         digitalPinToInterrupt( kPinAccel ), interruptHandler, RISING );
     }
     else
     {
@@ -221,7 +217,7 @@ loop()
         }
         if ( 0 < g_uTimeInterrupt )
         {
-            if ( 1000 * 30 < abs( g_uTimeCurrent - g_uTimeInterrupt ) )
+            if ( 1000 * 10 < abs( g_uTimeCurrent - g_uTimeInterrupt ) )
             {
                 // enterSleep();
                 g_uTimeInterrupt = millis();
